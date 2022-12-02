@@ -33,18 +33,10 @@ def command_dispatch(command):
 
 
 def send_response(msg):
-    # enc_msg = base64.b64encode(bytes(msg, 'utf-8'))
-    # dec_msg = base64.b64decode(msg, 'utf-8')
-    # print(dec_msg)
-
-    # base64_bytes = base64.b64encode(msg.encode("ascii"))
-    # base64_string = base64_bytes.decode("ascii")
-    # print(base64_string)
-  
-    # print(f"Encoded string: {base64_string}")
     enc_msg     = str(msg).encode('utf-8')
+    base64_enc_msg = base64.b64encode(enc_msg)
     try:
-        client.send(enc_msg)
+        client.send(base64_enc_msg)
     except socket.error:
         print ("ERROR: Could not connect to server")
         client.close()

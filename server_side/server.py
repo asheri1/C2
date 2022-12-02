@@ -6,6 +6,7 @@ import os
 from base64 import b64decode
 import base64
 import threading
+import time
 
 
 HOST_ADDR     = "127.0.0.1"
@@ -28,11 +29,8 @@ def get_alive_signal(connection, address):
     with connection as client:
         while(True):
             try:
-                import select
-                ready = select.select([client], [], [], 5)
-                while ready[0]:
-                    msg = client.recv(3)
-                    msg    = msg.decode('utf-8')
+                msg = client.recv(3)
+                # msg    = msg.decode('utf-8') 
             except socket.error:
                 client_disconnect(connection,address)
                 break
@@ -45,14 +43,18 @@ def get_responses(connection,addr):
     with connection as client:
         while(True):
             try:
-                msg = client.recv(100)
-                msg = msg.decode('utf-8')
+                msg = client.recv(30)
+                
+                base64_dec_msg = base64.decodebytes(msg)
+                msg= base64_dec_msg.decode()
                 lst = ["Received", "Initialized", "Running", "Finished", "Error"]
                 if any(msg.startswith(item) for item in lst):
                     filepath = os.path.join(os.getcwd(), "responses.txt")
                     with open(filepath, "a") as f:
                         f.write(msg + "\n")
                     f.close()
+            except base64.binascii.Error:
+                pass
             except socket.error:
                 client_disconnect(connection,addr)
                 break

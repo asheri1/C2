@@ -170,6 +170,11 @@ def main_menu():
             if not any_active_client(): # if returned false
                 continue                # go to main menu
             cl,addr = choose_client()
+            subOp = input("""Are you sure?\n 
+            1)  YES. \n
+            2)  <---  Go Back  <--- \n""")
+            if subOp!='1':
+                continue
             client_disconnect(cl,addr)
             continue
 
@@ -177,6 +182,8 @@ def main_menu():
             refresh = show_responses_refresher()
             while refresh:
                 refresh = show_responses_refresher()
+            continue
+        else:
             continue
 
                 
