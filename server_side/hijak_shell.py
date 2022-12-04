@@ -3,7 +3,7 @@ import subprocess
 import os
 import sys
 
-def worker(s, com):
+def worker(soc, com):
       soc.send(com.encode()) #send command
 
 #get message worker
@@ -13,7 +13,7 @@ def worker2(s):
 
     
 with socket.socket() as soc:
-      soc.connect((sys.argv[1], sys.argv[2])) #connect to target server
+      soc.connect((sys.argv[1], int(sys.argv[2]))) #connect to target server
       print("Hi_jaKeR>>>", end="") 
       command = ""
       while command!="q":

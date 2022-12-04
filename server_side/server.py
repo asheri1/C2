@@ -7,13 +7,26 @@ from base64 import b64decode
 import base64
 import threading
 import time
+import logging
+from help_utils import *
+
+######################## logging setup #######################
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('%(levelname)s   %(message)s')
+
+handler = logging.FileHandler('server.log')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+##############################################################
+
 
 
 HOST_ADDR     = "127.0.0.1"
 PORT        = 5000
 
 clients_status = {}
-#{ address: ON/OFF}
+#{ client_name = (host_name,ip_address): ON/OFF}
 clients_conns  = {}
 msg_id         = 0
 
@@ -25,70 +38,84 @@ server.bind((HOST_ADDR, PORT))
 server.listen()
 
 
-def get_alive_signal(connection, address):
-    with connection as client:
-        while(True):
-            try:
-                msg = client.recv(3)
-                # msg    = msg.decode('utf-8') 
-            except socket.error:
-                client_disconnect(connection,address)
-                break
-            except ValueError:
-                break
 
-
-
-def get_responses(connection,addr):
-    with connection as client:
-        while(True):
-            try:
-                msg = client.recv(30)
-                
-                base64_dec_msg = base64.decodebytes(msg)
-                msg= base64_dec_msg.decode()
-                lst = ["Received", "Initialized", "Running", "Finished", "Error"]
-                if any(msg.startswith(item) for item in lst):
-                    filepath = os.path.join(os.getcwd(), "responses.txt")
-                    with open(filepath, "a") as f:
-                        f.write(msg + "\n")
-                    f.close()
-            except base64.binascii.Error:
-                pass
-            except socket.error:
-                client_disconnect(connection,addr)
-                break
+def write_response(msg):
+    base64_dec_msg = base64.decodebytes(msg)
+    msg= base64_dec_msg.decode('utf-8')
+    lst = ["Received", "Initialized", "Running", "Finished", "Error"]
+    if any(msg.startswith(item) for item in lst):
+        filepath = os.path.join(os.getcwd(), "responses.txt")
+        with open(filepath, "a") as f:
+            f.write(msg + "\n")
+        f.close()
 
                 
+def dispatch_data_dict(msg):
+    msg = ast.literal_eval(msg)
+    out = msg['output']
+    err = msg['err']
+    id  = msg['id']
+    if 'filename' in msg.keys():
+        filename = msg['filename']
+    else:
+        filename=None
+    return out, err, id, filename
+
     
-def get_post_exe_data(connection,addr):
-    with connection as client:
-        while(True):
-            try:
-                msg = client.recv(100000)
-                msg = msg.decode('utf-8')
-                if msg.startswith("{'output'"):
-                    msg = ast.literal_eval(msg)
-                    out = msg['output']
-                    err = msg['err']
-                    id  = msg['id']
-                    if('filename' in msg.keys() and err == ""):
-                        filepath = os.path.join(os.getcwd(), f"{msg['filename']}")
-                        with open(filepath, "w") as f:
-                            f.writelines(out)
-                        f.close()
-                    else:
-                        filepath = os.path.join(os.getcwd(), f"{addr[0]}.txt")
-                        with open(filepath, "a") as f:
-                            f.writelines(f"command number: {id}\n")
-                            if out != "":
-                                f.writelines(out + "\n\n\n\n\n")
-                            if err != "":
-                                f.writelines(err+ "\n\n\n\n\n")
-                        f.close()
-            except socket.error:
-                client_disconnect(connection,addr)
-                break
+def check_data_type(msg,cl_name):
+    if isBase64(msg):
+        write_response(msg)
+    else:
+        msg= msg.decode('utf-8')
+        if(msg.startswith("{'output'")): # checking if data or alive msg
+            out, err, id, filename = dispatch_data_dict(msg)
+
+            if(filename == None or err != ""):
+                write_cl_data_file(out,err,id,cl_name)    #write data into file named after the client's name
+            else: 
+                download_file(out, err, id, filename)  
+
+        else: # alive msg - 'ack'
+            pass
+    
+
+        
+
+def write_cl_data_file(out,err,id,cl_name):
+    hostname = cl_name[0]
+    filepath = os.path.join(os.getcwd(), f"{hostname}.txt")
+    with open(filepath, "a") as f:
+        f.writelines(f"command number: {id}\n")
+        if out != "":
+            f.writelines(out + "\n\n\n\n\n")
+        if err != "":
+            f.writelines("err:" + err+ "\n\n\n\n\n")
+            logger.error(f"in cmd id {id}: \t {err}")
+    f.close()
+
+
+def download_file(out, err, id, filename):
+    filepath = os.path.join(os.getcwd(), f"{filename}")
+    with open(filepath, "w") as f:
+        f.writelines(out)
+    f.close()
+
+
+
+def get_data(conn,cl_name):
+    while(True):
+        try:
+            msg = conn.recv(100000)
+            check_data_type(msg,cl_name)
+        except socket.error:
+            curr_time = curr_date_and_time()
+            logger.info(f"client {cl_name} disconnect - {curr_time}")
+            client_disconnect(conn,cl_name)
+            break
+
+
+
+
 
 
 
@@ -108,10 +135,10 @@ def send_msg(conn,cmd):
 
 
 
-def client_disconnect(connection,address=None):
-    clients_status[address] = "OFF"
+def client_disconnect(connection,cl_name=None):
+    clients_status[cl_name] = "OFF"
     if connection == None: 
-        connection = clients_conns[address]
+        connection = clients_conns[cl_name]
     connection.close()
     return
 
@@ -120,17 +147,20 @@ def client_disconnect(connection,address=None):
 def clients_handler():
         while(True):
             conn, addr  =   server.accept()
+
             hostname = socket.gethostname()
             ip_address = socket.gethostbyname(hostname)
-            addr = (hostname, ip_address)
-            clients_conns[addr]  = conn
-            clients_status[addr] = "ON"
-            thread   = threading.Thread(target=get_alive_signal, args=(conn,addr))
+            client_name = (hostname, ip_address)
+            clients_conns[client_name]  = conn
+            clients_status[client_name] = "ON"
+
+            curr_time = curr_date_and_time()
+            logger.info(f"client {client_name} connect - {curr_time}")
+
+            thread   = threading.Thread(target=get_data, args=(conn,client_name))
             thread.start()
-            thread   = threading.Thread(target=get_responses, args=(conn,addr))
-            thread.start()
-            thread   = threading.Thread(target=get_post_exe_data, args=(conn,addr))
-            thread.start()
+
+
 
             
 
