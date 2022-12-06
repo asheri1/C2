@@ -61,10 +61,18 @@ def dispatch_data_dict(msg):
         filename    = None
     return out, err, id, filename
 
-    
+
+def is_alive_msg(msg):
+    if msg[:3] == "ack":
+        return True
+    return False
+
 def check_data_type(msg,cl_name):
-    if isBase64(msg):
+    dec_msg     = msg.decode('utf-8')
+    if isBase64(msg) and not is_alive_msg(dec_msg):
         write_response(msg)
+    elif is_alive_msg(dec_msg):
+        pass
     else:
         msg     = msg.decode('utf-8')
         if(msg.startswith("{'output'")): # checking if data or alive msg
@@ -74,9 +82,6 @@ def check_data_type(msg,cl_name):
                 write_cl_data_file(out,err,id,cl_name)    #write data into file named after the client's name
             else: 
                 download_file(out, err, id, filename)  
-
-        else:   # alive msg - 'ack'
-            pass
     
 
 def write_cl_data_file(out,err,id,cl_name):
