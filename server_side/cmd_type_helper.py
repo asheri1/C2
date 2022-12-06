@@ -100,7 +100,7 @@ bs_args     = ["enter port to take control over client's shell:"]
 
 
 
-download_file   = command(payload=d_payload, type='download_file', args_to_ask=d_args)
+download_file   = command(payload=d_payload, type='download_text_file', args_to_ask=d_args)
 ports_scan      = command(payload=ports_payload, type='ports_scan', args_to_ask=[])
 one_port_scan   = command(payload=p_payload, type='one_port_scan', args_to_ask=p_args)
 cmd_exe         = command(payload=ce_payload, type='cmd_exe', args_to_ask=ce_args)

