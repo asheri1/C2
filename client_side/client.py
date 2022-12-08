@@ -96,7 +96,7 @@ class command():
             hostname        = socket.gethostname()
             ip_address      = socket.gethostbyname(hostname)
             self.args       = [sys.executable, self.exe_filepath, ip_address] + self.args
-        elif self.type == 'ports_scan':
+        elif self.type == 'all_ports_scan':
             hostname        = socket.gethostname()
             ip_address      = socket.gethostbyname(hostname)
             self.args       = [sys.executable, self.exe_filepath, ip_address]
